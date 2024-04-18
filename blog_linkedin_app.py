@@ -1,15 +1,14 @@
 import time #Iwish
 import os
 import json
-import openai
 import requests
 import streamlit as st
-from streamlit_lottie import st_lottie
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_random_exponential,
 )
+import google.generativeai as genai
 
 
 def main():
@@ -17,7 +16,6 @@ def main():
     st.set_page_config(
         page_title="Alwrity",
         layout="wide",
-        page_icon="img/logo.png"
     )
     # Remove the extra spaces from margin top.
     st.markdown("""
@@ -56,37 +54,8 @@ def main():
     hide_streamlit_footer = '<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>'
     st.markdown(hide_streamlit_footer, unsafe_allow_html=True)
 
-    # Sidebar input for OpenAI API Key
-    openai_api_key = st.sidebar.text_input("**Enter OpenAI API Key(Optional)**", type="password")
-    st.sidebar.image("img/alwrity.jpeg", use_column_width=True)
-    st.sidebar.markdown(f"🧕 :red[Checkout Alwrity], complete **AI writer & Blogging solution**:[Alwrity](https://alwrity.netlify.app)")
-    
     # Title and description
     st.title("✍️ Alwrity - AI Linkedin Blog Post Generator")
-    with st.expander("How to Write **Great Instagram Captions** ? 📝❗"):
-        st.markdown('''
-            **Step 1: Input Keywords** 📝
-                - Enter 2-3 main keywords defining your blog post.
-                - Use the text input field provided.
-
-            **Step 2: Choose Post Type** 📌
-                - Select the type of post from options like General, How-to Guides, Polls, etc.
-                - Utilize the dropdown menu to make your selection.
-
-            **Step 3: Determine Post Length** 📏
-                - Choose the desired length of your post: 1000 words, Long Form, or Short form.
-                - Use the dropdown menu to select your preference.
-
-            **Step 4: Select Language** 🌐
-                - Pick the language for your post from options like English, Vietnamese, Chinese, etc.
-                - Utilize the dropdown menu to make your selection.
-
-            **Step 5: Generate LinkedIn Post** 🚀
-                - Click on the "Get LinkedIn Post" button to generate your post.
-                - Error messages will prompt if any inputs are missing.
-                - Upon successful generation, the post will be displayed.
-                - Copy the generated post from the provided code block for use on LinkedIn.
-            ''')
 
     # Input section
     with st.expander("**PRO-TIP** - Read the instructions below.", expanded=True):
@@ -110,48 +79,10 @@ def main():
                     linkedin_post = generate_linkedin_post(input_blog_keywords, input_linkedin_type, 
                             input_linkedin_length, input_linkedin_language)
                     if linkedin_post:
-                        st.subheader('**👩🔬👩Go Rule LinkedIn with this Blog Post!**')
+                        st.subheader('**🧕🔬👩 Go Rule LinkedIn with this Blog Post!**')
                         st.write(linkedin_post)
                     else:
                         st.error("💥**Failed to generate linkedin Post. Please try again!**")
-
-    data_oracle = import_json(r"lottie_files/manager_robo.json")
-    st_lottie(data_oracle, height=600, key="linkedin")
-
-    st.markdown('''
-                *Generates SEO optimized Linkedin Posts - powered by AI (OpenAI GPT-3, Gemini Pro).
-                Implemented by [Alwrity](https://alwrity.netlify.app).
-                Alwrity will do web research for given keywords and base blog on web research.
-                It will process all top google results and present unique blog post, for you.*
-                ''')
-
-    st.subheader('**👩🔬👩 How to Write Killer LinkedIn Posts ?**')
-    st.markdown('''
-
-        1. **Utilize Plain Text Posts:** Use plain text to ensure clarity and impact in your message.
-        2. **Incorporate Emojis:** Enhance content digestibility and highlight ideas by incorporating emojis.
-        3. **Craft Compelling Headlines:** Capture user attention with compelling headlines that draw readers in.
-        4. **Start with a Story:** Create relatability and interest by beginning your post with a story.
-        5. **Break Up Text:** Improve readability by breaking up text into single-sentence paragraphs.
-        6. **Mention Connections or Influencers:** Broaden post visibility by mentioning connections or influencers.
-        7. **Provide Specific Instructions and Ask Questions:** Encourage engagement by offering specific 
-             instructions and asking thought-provoking questions.
-        8. **Offer Intellectual Property:** Add value to the LinkedIn community by sharing intellectual property.
-        9. **Add Relevant Hashtags:** Increase post reach by including relevant hashtags.
-        10. **Avoid External Links:** Maintain engagement by avoiding external links within posts.
-        11. **Schedule Posts:** Ensure consistent visibility and performance by scheduling posts.
-        12. **Provide Examples of Post Ideas:** Offer examples such as personal stories, job postings, 
-            polls, video stories, reality check posts, job announcements, and how-to guides.
-
-        Additionally, the content emphasizes the importance of:
-        - **Lowering the Reading Level:** Keep posts simple and easy to read, aiming for a grade 
-            level below your audience's formal education.
-        - **Finessing Your Opening Line:** Grab attention with an engaging opening sentence.
-        - **Jumping on the Latest Bandwagon:** Experiment with new LinkedIn features and content types to increase organic reach.
-        - **Adding Visual Interest:** Incorporate images, videos, or other visual content to enhance engagement.
-        - **Writing for an Audience of One:** Tailor posts as if speaking directly to a specific individual 
-            within your network, simplifying language and ensuring clarity.
-        ''')
 
 
 # Function to generate blog metadesc
@@ -179,7 +110,7 @@ def generate_linkedin_post(input_blog_keywords, input_linkedin_type, input_linke
         google serp results: '{serp_results}'
         people_also_ask: '{people_also_ask}'
         """
-        linkedin_post = openai_chatgpt(prompt)
+        linkedin_post = generate_text_with_exception_handling(prompt)
         return linkedin_post
 
 
@@ -239,56 +170,58 @@ def perform_serperdev_google_search(query):
 
 
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def openai_chatgpt(prompt, model="gpt-3.5-turbo-0125", temperature=0.2, max_tokens=500, top_p=0.9, n=3):
+def generate_text_with_exception_handling(prompt):
     """
-    Wrapper function for OpenAI's ChatGPT completion.
+    Generates text using the Gemini model with exception handling.
 
     Args:
-        prompt (str): The input text to generate completion for.
-        model (str, optional): Model to be used for the completion. Defaults to "gpt-4-1106-preview".
-        temperature (float, optional): Controls randomness. Lower values make responses more deterministic. Defaults to 0.2.
-        max_tokens (int, optional): Maximum number of tokens to generate. Defaults to 8192.
-        top_p (float, optional): Controls diversity. Defaults to 0.9.
-        n (int, optional): Number of completions to generate. Defaults to 1.
+        api_key (str): Your Google Generative AI API key.
+        prompt (str): The prompt for text generation.
 
     Returns:
-        str: The generated text completion.
-
-    Raises:
-        SystemExit: If an API error, connection error, or rate limit error occurs.
+        str: The generated text.
     """
-    # Wait for 10 seconds to comply with rate limits
-    for _ in range(10):
-        time.sleep(1)
 
     try:
-        client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            n=n,
-            top_p=top_p
-            # Additional parameters can be included here
-        )
-        return response.choices[0].message.content
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
-    except openai.APIError as e:
-        st.error(f"OpenAI API Error: {e}")
-    except openai.APIConnectionError as e:
-        st.error(f"Failed to connect to OpenAI API: {e}")
-    except openai.RateLimitError as e:
-        st.error(f"Rate limit exceeded on OpenAI API request: {e}")
-    except Exception as err:
-        st.error(f"OpenAI error: {err}")
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 0,
+            "max_output_tokens": 8192,
+        }
 
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+        ]
 
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest",
+                                      generation_config=generation_config,
+                                      safety_settings=safety_settings)
 
-# Function to import JSON data
-def import_json(path):
-    with open(path, "r", encoding="utf8", errors="ignore") as file:
-        url = json.load(file)
-        return url
+        convo = model.start_chat(history=[])
+        convo.send_message(prompt)
+        return convo.last.text
+
+    except Exception as e:
+        st.exception(f"An unexpected error occurred: {e}")
+        return None
 
 
 if __name__ == "__main__":
