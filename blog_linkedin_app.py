@@ -81,6 +81,7 @@ def main():
                     if linkedin_post:
                         st.subheader('**🧕🔬👩 Go Rule LinkedIn with this Blog Post!**')
                         st.write(linkedin_post)
+                        st.write("\n\n\n\n\n\n")
                     else:
                         st.error("💥**Failed to generate linkedin Post. Please try again!**")
 
@@ -211,7 +212,7 @@ def generate_text_with_exception_handling(prompt):
             },
         ]
 
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest",
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest",
                                       generation_config=generation_config,
                                       safety_settings=safety_settings)
 
