@@ -9,6 +9,7 @@ from tenacity import (
     wait_random_exponential,
 )
 import google.generativeai as genai
+from exa_py import Exa
 
 
 def main():
@@ -101,84 +102,47 @@ def main():
 def generate_linkedin_post(input_blog_keywords, input_linkedin_type, input_linkedin_length, input_linkedin_language):
     """ Function to call upon LLM to get the work done. """
 
-    # Fetch SERP results & PAA questions for FAQ.
-    serp_results, people_also_ask = get_serp_results(input_blog_keywords)
+    serp_results = None
+    try:
+        serp_results = metaphor_search_articles(input_blog_keywords)
+    except Exception as err:
+        st.error(f"❌ Failed to retrieve search results for {input_blog_keywords}: {err}")
 
     # If keywords and content both are given.
     if serp_results:
-        prompt = f"""As a SEO expert and experienced linkedin content writer, 
-        I will provide you with my 'blog keywords' and 'google serp results'.
+        prompt = f"""As a expert and experienced linkedin content writer, 
+        I will provide you with my 'blog keywords' and 'google search results'.
         Your task is to write a detailed linkedin post, using given keywords and search results.
 
         Follow below guidelines for generating the linkedin post:
         1). Write a title, introduction, sections, faqs and a conclusion for the post.
-        2). Your FAQ should be based on 'People also ask' and 'Related Queries' from given serp results.
-        3). Maintain consistent voice of tone, keep the sentence short and simple.
+        2). Demostrate Experience, Expertise, Authoritativeness, and Trustworthiness with your post.
+        3). Maintain consistent voice of tone, keep the sentence short and simple for professional audience.
         4). Make sure to include important results from the given google serp results.
         5). Optimise your response for blog type of {input_linkedin_type}.
         6). Important to provide your response in {input_linkedin_language} language.\n
 
         blog keywords: '{input_blog_keywords}'\n
         google serp results: '{serp_results}'
-        people_also_ask: '{people_also_ask}'
         """
         linkedin_post = generate_text_with_exception_handling(prompt)
         return linkedin_post
 
 
-def get_serp_results(search_keywords):
-    """ """
-    serp_results = perform_serperdev_google_search(search_keywords)
-    people_also_ask = [item.get("question") for item in serp_results.get("peopleAlsoAsk", [])]
-    return serp_results, people_also_ask
+# Metaphor search function
+def metaphor_search_articles(query):
+    METAPHOR_API_KEY = os.getenv('METAPHOR_API_KEY')
+    if not METAPHOR_API_KEY:
+        raise ValueError("METAPHOR_API_KEY environment variable not set!")
 
+    metaphor = Exa(METAPHOR_API_KEY)
 
-def perform_serperdev_google_search(query):
-    """
-    Perform a Google search using the Serper API.
-
-    Args:
-        query (str): The search query.
-
-    Returns:
-        dict: The JSON response from the Serper API.
-    """
-    # Get the Serper API key from environment variables
-    serper_api_key = os.getenv('SERPER_API_KEY')
-
-    # Check if the API key is available
-    if not serper_api_key:
-        st.error("SERPER_API_KEY is missing. Set it in the .env file.")
-
-    # Serper API endpoint URL
-    url = "https://google.serper.dev/search"
-    # FIXME: Expose options to end user. Request payload
-    payload = json.dumps({
-        "q": query,
-        "gl": "in",
-        "hl": "en",
-        "num": 10,
-        "autocorrect": True,
-        "page": 1,
-        "type": "search",
-        "engine": "google"
-    })
-
-    # Request headers with API key
-    headers = {
-        'X-API-KEY': serper_api_key,
-        'Content-Type': 'application/json'
-    }
-
-    # Send a POST request to the Serper API with progress bar
-    with st.spinner("Searching Google..."):
-        response = requests.post(url, headers=headers, data=payload, stream=True)
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Error: {response.status_code}, {response.text}")
-
+    try:
+        search_response = metaphor.search_and_contents(query, use_autoprompt=True, num_results=5)
+        return search_response.results
+    except Exception as err:
+        st.error(f"Failed in metaphor.search_and_contents: {err}")
+        return None
 
 
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
