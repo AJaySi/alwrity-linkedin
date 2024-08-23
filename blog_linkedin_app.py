@@ -10,95 +10,117 @@ from tenacity import (
 )
 import google.generativeai as genai
 from exa_py import Exa
+import clipboard
 
 
 def main():
     # Set page configuration
     st.set_page_config(
-        page_title="Alwrity- AI linkedin Post writer",
+        page_title="Alwrity - AI LinkedIn Post Writer",
         layout="wide",
+        initial_sidebar_state="collapsed"
     )
-    # Remove the extra spaces from margin top.
+
+    # Global CSS styles for UI improvements
     st.markdown("""
         <style>
-                ::-webkit-scrollbar-track {
-        background: #e1ebf9;
-        }
+            body {
+                background-color: #f0f2f6;
+            }
+            div.stButton > button:first-child {
+                background-color: #007bff;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 10px;
+                font-weight: bold;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+                border: none;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            div.stButton > button:first-child:hover {
+                background-color: #0056b3;
+            }
+            .reportview-container .markdown-text-container {
+                font-family: 'Helvetica Neue', sans-serif;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-        ::-webkit-scrollbar-thumb {
-            background-color: #90CAF9;
-            border-radius: 10px;
-            border: 3px solid #e1ebf9;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64B5F6;
-        }
-
-        ::-webkit-scrollbar {
-            width: 16px;
-        }
-        div.stButton > button:first-child {
-            background: #1565C0;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 2px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
-        }
+    # Hide top header and footer for a cleaner UI
+    hide_elements = """
+        <style>
+        header {visibility: hidden;}
+        #MainMenu {visibility: hidden;} 
+        footer {visibility: hidden;}
         </style>
     """
-    , unsafe_allow_html=True)
-
-    # Hide top header line
-    hide_decoration_bar_style = '<style>header {visibility: hidden;}</style>'
-    st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
-
-    # Hide footer
-    hide_streamlit_footer = '<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>'
-    st.markdown(hide_streamlit_footer, unsafe_allow_html=True)
+    st.markdown(hide_elements, unsafe_allow_html=True)
 
     # Title and description
-    st.title("✍️ Alwrity - AI Linkedin Blog Post Generator")
+    st.title("✍️ Alwrity - AI LinkedIn Post Generator")
+    st.write("Leverage AI to craft high-quality LinkedIn posts tailored to your audience.")
 
-    # Input section
-    with st.expander("**💡 PRO-TIP** - Read the instructions below.", expanded=True):
-        input_blog_keywords = st.text_input('**🔑 Enter main keywords of your Post!**', placeholder='E.g., Marketing Trends, Leadership Tips...')
-        col1, col2, space, col3 = st.columns([5, 5, 0.5, 5])
+    # Initialize session state for generated post
+    if "linkedin_post" not in st.session_state:
+        st.session_state.linkedin_post = ""
+
+    # Input section with an informative expander
+    with st.expander("💡 **PRO TIP** - Follow these instructions for better results.", expanded=True):
+        st.write("1. Use specific keywords related to your topic.\n"
+                 "2. Choose a post type that aligns with your message.\n"
+                 "3. Select an appropriate language and length for your audience.")
+
+        # Input fields for the LinkedIn post generator
+        input_blog_keywords = st.text_input(
+            '🔑 **Enter main keywords for your post**', 
+            placeholder='e.g., Marketing Trends, Leadership Tips...', 
+            help="Use relevant keywords that define the topic of your LinkedIn post."
+        )
+        col1, col2, col3 = st.columns(3)
         with col1:
             input_linkedin_type = st.selectbox('📝 **Post Type**', (
                 'General', 'How-to Guides', 'Polls', 'Listicles', 
-                'Reality check posts', 'Job Posts', 'FAQs', 'Checklists/Cheat Sheets'), index=0)
+                'Reality Check Posts', 'Job Posts', 'FAQs', 'Checklists/Cheat Sheets'), 
+                index=0, help="Choose the format that suits the message you want to deliver.")
         with col2:
-            input_linkedin_length = st.selectbox('📏 **Post Length**', ('1000 words', 'Long Form', 'Short form'), index=0)
+            input_linkedin_length = st.selectbox('📏 **Post Length**', 
+                ('1000 words', 'Long Form', 'Short Form'), index=0, 
+                help="Decide the length of your post based on its complexity and target audience.")
         with col3:
-            input_linkedin_language = st.selectbox('🌐 **Choose Language**', (
-                'English', 'Vietnamese', 'Chinese', 'Hindi', 'Spanish'), index=0)
-    
-    # Generate Blog FAQ button
-    if st.button('🚀 **Get LinkedIn Post**'):
-        with st.spinner('🔄 Assigning AI professional to write your LinkedIn Post...'):
-            if not input_blog_keywords:
-                st.error('🚫 **Provide Inputs to generate LinkedIn Post. Keywords are required!**')
-            else:
-                linkedin_post = generate_linkedin_post(
+            input_linkedin_language = st.selectbox('🌐 **Choose Language**', 
+                ('English', 'Vietnamese', 'Chinese', 'Hindi', 'Spanish'), 
+                index=0, help="Pick the language that resonates best with your audience.")
+
+    # Button to generate the LinkedIn post
+    if st.button('🚀 **Generate LinkedIn Post**'):
+        if not input_blog_keywords:
+            st.error('🚫 **Please provide keywords to generate a LinkedIn post!**')
+        else:
+            with st.spinner('🤖 Crafting your LinkedIn post...'):
+                # Progress bar for user feedback
+                progress_bar = st.progress(0)
+                for percent_complete in range(100):
+                    time.sleep(0.03)
+                    progress_bar.progress(percent_complete + 1)
+
+                # Generate the LinkedIn post
+                st.session_state.linkedin_post = generate_linkedin_post(
                     input_blog_keywords, input_linkedin_type, 
                     input_linkedin_length, input_linkedin_language)
-                if linkedin_post:
-                    st.subheader('🎉 **Go Rule LinkedIn with this Blog Post!**')
-                    st.write(linkedin_post)
-                else:
-                    st.error("💥 **Failed to generate LinkedIn Post. Please try again!**")
 
-# Function to generate blog metadesc
+            # Post generation success message
+            st.success('🎉 **Your LinkedIn post is ready!**')
+            st.subheader('📄 **LinkedIn Post Preview**')
+            st.write(st.session_state.linkedin_post)
+
+            # Copy to Clipboard button with success feedback
+            if st.button('📋 Copy to Clipboard'):
+                clipboard.copy(st.session_state.linkedin_post)
+                st.success("✅ LinkedIn post copied to clipboard!")
+
+
 def generate_linkedin_post(input_blog_keywords, input_linkedin_type, input_linkedin_length, input_linkedin_language):
     """ Function to call upon LLM to get the work done. """
 
