@@ -1,3 +1,4 @@
 streamlit
 exa_py
+clipboard
 google.generativeai
