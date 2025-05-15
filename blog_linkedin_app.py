@@ -132,21 +132,32 @@ def generate_linkedin_post(input_blog_keywords, input_linkedin_type, input_linke
 
     # If keywords and content both are given.
     if serp_results:
-        prompt = f"""As a expert and experienced linkedin content writer, 
-        I will provide you with my 'blog keywords' and 'google search results'.
-        Your task is to write a detailed linkedin post, using given keywords and search results.
+        prompt = f"""You are a professional LinkedIn content writer and SEO expert. Your task is to create a detailed, engaging, and SEO-optimized LinkedIn post based on the provided inputs.
 
-        Follow below guidelines for generating the linkedin post:
-        1). Write a title, introduction, sections, faqs and a conclusion for the post.
-        2). Demostrate Experience, Expertise, Authoritativeness, and Trustworthiness with your post.
-        3). Maintain consistent voice of tone, keep the sentence short and simple for professional audience.
-        4). Make sure to include important results from the given google serp results.
-        5). Optimise your response for blog type of {input_linkedin_type}.
-        6). Important to provide your response in {input_linkedin_language} language.\n
+### Guidelines:
+1. **Title**: Write a concise, keyword-rich title (8-12 words) that grabs attention and clearly conveys the blog's main topic.
+2. **Introduction**: Start with an engaging introduction that tells the reader what they will learn or gain from the post. Ensure the introduction also acts as a concise, keyword-rich description for SEO purposes.
+3. **Content Structure**:
+   - Use clear sections with headings: Title, Introduction, Key Features/Benefits, FAQs (if applicable), and Conclusion.
+   - Ensure the content is scannable with bullet points or numbered lists where appropriate.
+4. **SEO Optimization**:
+   - Incorporate the provided keywords naturally throughout the post.
+   - Include actionable insights, examples, or tips to make the content valuable and engaging.
+   - Link to credible sources or additional resources where relevant.
+5. **Tone and Style**:
+   - Maintain a professional yet conversational tone suitable for LinkedIn's audience.
+   - Use short, concise sentences for better readability.
+   - For technical or niche topics, ensure the content includes sufficient depth and uses an appropriate tone.
+6. **Call-to-Action (CTA)**: End with a strong CTA that encourages engagement (e.g., comments, shares, or visiting a link).
+7. **Language**: Write the post in the specified language: {input_linkedin_language}.
+8. **Post Type**: Tailor the content to the specified post type: {input_linkedin_type}.
+9. **Visuals**: Suggest adding relevant visuals (e.g., images, infographics) to enhance engagement.
 
-        blog keywords: '{input_blog_keywords}'\n
-        google serp results: '{serp_results}'
-        """
+### Inputs:
+- **Blog Keywords**: '{input_blog_keywords}'
+- **Google SERP Results**: '{serp_results}'
+
+Generate a LinkedIn post that is professional, engaging, and optimized for both LinkedIn and Google SEO while adhering to the above guidelines."""
         linkedin_post = generate_text_with_exception_handling(prompt)
         return linkedin_post
 
